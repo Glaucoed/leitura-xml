@@ -25,29 +25,67 @@ interface ICMSTot {
   vTotTrib: { _text: string };
 }
 
+interface IDto {
+  frete: number;
+  icms: number;
+  custo: number;
+  icmsst: number;
+  estado: string;
+}
+interface IDtoRemoved {
+  frete: number;
+  icms: number;
+  icmsst: number;
+  custo: number;
+}
+
 export default function Home() {
-  const [xmlDataCompra, setXmlDataCompra] = useState<ICMSTot | null>(null);
-  const [xmlDataVenda, setXmlDataVenda] = useState<ICMSTot | null>(null);
+  const [xmlDataCompra, setXmlDataCompra] = useState<IDto | IDtoRemoved | null>(null);
+  const [xmlDataVenda, setXmlDataVenda] = useState<IDto | IDtoRemoved | null>(null);
 
   useEffect(() => {
-    const fetchAndParseXML = async (file: string, setDataFunction: React.Dispatch<React.SetStateAction<ICMSTot | null>>) => {
+    const fetchAndParseXML = async (file: string, setDataFunction: React.Dispatch<React.SetStateAction<IDto | IDtoRemoved | null>>, type: string) => {
       try {
         const response = await fetch(file);
         const xmlData = await response.text();
         const parsedData = xmljs.xml2js(xmlData, { compact: true }) as ElementCompact;
         const ICMS: ICMSTot  = parsedData.nfeProc.NFe.infNFe.total.ICMSTot;
-        setDataFunction(ICMS);
+        const estado = parsedData.nfeProc.NFe.infNFe.dest.enderDest.UF._text
+        let dto: IDto | IDtoRemoved;
+
+        if (type === 'venda') {
+          dto = {
+            frete: Number(ICMS?.vFrete._text),
+            icms: Number(ICMS?.vICMS._text),
+            icmsst: Number(ICMS?.vBCST._text),
+            custo: Number(ICMS?.vNF._text),
+            estado,
+          };
+        } else {
+          dto = {
+            frete: Number(ICMS?.vFrete._text),
+            icms: Number(ICMS?.vICMS._text),
+            icmsst: Number(ICMS?.vBCST._text),
+            custo: Number(ICMS?.vNF._text),
+            estado,
+          };
+        }
+
+        setDataFunction(dto);
+
+        
 
       } catch (error) {
         console.error('Ocorreu um erro ao carregar o arquivo XML:', error);
       }
     };
 
-    fetchAndParseXML('/berg.xml', setXmlDataCompra);
-    fetchAndParseXML('/centralmro.xml', setXmlDataVenda);
+    fetchAndParseXML('/berg.xml', setXmlDataCompra, 'compra');
+    fetchAndParseXML('/central.xml', setXmlDataVenda, 'venda');
   }, []);
 
   console.log(xmlDataVenda, 'venda');
+
   console.log(xmlDataCompra, 'compra');
 
   return (
